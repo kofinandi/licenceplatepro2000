@@ -74,7 +74,7 @@ class ConvolutionalOCR:
 
         detections = []
         for key, template in self.template_imgs.items():
-            character_ratio = 0.75
+            character_ratio = 0.7
 
             template_height, template_width = template.shape
             template = cv2.resize(template, (int(height * character_ratio * template_width / template_height), int(height * character_ratio)))
@@ -84,7 +84,7 @@ class ConvolutionalOCR:
             # print(key + ': ' + str(np.max(match)))
 
             # Set a threshold to identify matches
-            threshold = 0.66
+            threshold = 0.7
             locations = np.where(match >= threshold)
             # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
             locations = list(zip(*locations[::-1]))
@@ -92,14 +92,14 @@ class ConvolutionalOCR:
             detections.extend(locations)
 
         # Apply NMS
-        picked_boxes = self._apply_nms(detections)
+        picked_boxes = self._apply_nms(detections, threshold=0.1)
 
         # Draw bounding boxes around detected positions after NMS
         if draw_boxes:
             plate_with_boxes = self._draw_boxes(plate_gray, picked_boxes)
             cv2.imshow('Detected Characters', plate_with_boxes)
-            cv2.waitKey(0)
-            cv2.destroyAllWindows()
+            #cv2.waitKey(0)
+            #cv2.destroyAllWindows()
 
         picked_boxes.sort(key=lambda x: x[1])
         # print the detected text
@@ -107,5 +107,4 @@ class ConvolutionalOCR:
         for box in picked_boxes:
             text += box[5]
         # capitalize the text
-        text = text.upper()
-        print(text)
+        return text.upper()
