@@ -58,7 +58,7 @@ def get_line_pixels(image, x0, y0, x1, y1):
 
 
 
-def get_best_side_pair(image, is_horizontal, max_angle_dev, min_side_distance, min_line_length):
+def get_best_side_pair(image, is_horizontal, max_angle_dev, max_side_angle_dev, min_side_distance, min_line_length):
     im_size_x = len(image[0])
     im_size_y = len(image)
     if is_horizontal:
@@ -72,7 +72,8 @@ def get_best_side_pair(image, is_horizontal, max_angle_dev, min_side_distance, m
         max_angle_d = 90 + max_angle_dev
         mid_angle_d = 90
 
-    all_values = []
+    all_min_values = {}
+    all_max_values = {}
     for angle_d in range(min_angle_d, max_angle_d):
         angle = np.radians(angle_d)
         if is_horizontal:
@@ -112,6 +113,7 @@ def get_best_side_pair(image, is_horizontal, max_angle_dev, min_side_distance, m
         all_contrasts = np.array(all_contrasts)
         min_index = all_contrasts[all_contrasts[:, 1].argmin()][0]
         min_value = all_contrasts[:, 1].min()
+        all_min_values[angle_d] = (min_index, min_value)
 
         all_contrasts = []
         for i in range(im_size-1, -1, -1):
@@ -145,40 +147,60 @@ def get_best_side_pair(image, is_horizontal, max_angle_dev, min_side_distance, m
         all_contrasts = np.array(all_contrasts)
         max_index = all_contrasts[all_contrasts[:, 1].argmax()][0]
         max_value = all_contrasts[:, 1].max()
+        all_max_values[angle_d] = (max_index, max_value)
 
-        if is_horizontal:
-            if mid_angle_d > angle_d:
-                min_x0, min_y0 = 0, min_index
-                min_x1, min_y1 = int(min_x0 + line_length * np.cos(angle)), int(min_y0 + line_length * np.sin(angle))
-                max_x1, max_y1 = im_size_x, max_index
-                max_x0, max_y0 = int(max_x1 - line_length * np.cos(angle)), int(max_y1 - line_length * np.sin(angle))
+    all_values = []
+    for angle_d_min in range(min_angle_d, max_angle_d):
+        for angle_d_max in range(angle_d_min-max_side_angle_dev, angle_d_min+max_side_angle_dev):
+            if angle_d_min not in all_min_values or angle_d_max not in all_max_values:
+                continue
+            min_index, min_value = all_min_values[angle_d_min]
+            max_index, max_value = all_max_values[angle_d_max]
+            angle_min = np.radians(angle_d_min)
+            angle_max = np.radians(angle_d_max)
+
+            if is_horizontal:
+                if mid_angle_d > angle_d_min:
+                    min_x0, min_y0 = 0, min_index
+                    min_x1, min_y1 = int(min_x0 + line_length * np.cos(angle_min)), int(min_y0 + line_length * np.sin(angle_min))
+                else:
+                    min_x1, min_y1 = im_size_x, min_index
+                    min_x0, min_y0 = int(min_x1 - line_length * np.cos(angle_min)), int(min_y1 - line_length * np.sin(angle_min))
+
+                if mid_angle_d > angle_d_max:
+                    max_x1, max_y1 = im_size_x, max_index
+                    max_x0, max_y0 = int(max_x1 - line_length * np.cos(angle_max)), int(max_y1 - line_length * np.sin(angle_max))
+                else:
+                    max_x0, max_y0 = 0, max_index
+                    max_x1, max_y1 = int(max_x0 + line_length * np.cos(angle_max)), int(max_y0 + line_length * np.sin(angle_max))
             else:
-                min_x1, min_y1 = im_size_x, min_index
-                min_x0, min_y0 = int(min_x1 - line_length * np.cos(angle)), int(min_y1 - line_length * np.sin(angle))
-                max_x0, max_y0 = 0, max_index
-                max_x1, max_y1 = int(max_x0 + line_length * np.cos(angle)), int(max_y0 + line_length * np.sin(angle))
-        else:
-            if mid_angle_d > angle_d:
-                min_x1, min_y1 = min_index, im_size_y
-                min_x0, min_y0 = int(min_x1 - line_length * np.cos(angle)), int(min_y1 - line_length * np.sin(angle))
-                max_x0, max_y0 = max_index, 0
-                max_x1, max_y1 = int(max_x0 + line_length * np.cos(angle)), int(max_y0 + line_length * np.sin(angle))
-            else:
-                min_x0, min_y0 = min_index, 0
-                min_x1, min_y1 = int(min_x0 + line_length * np.cos(angle)), int(min_y0 + line_length * np.sin(angle))
-                max_x1, max_y1 = max_index, im_size_y
-                max_x0, max_y0 = int(max_x1 - line_length * np.cos(angle)), int(max_y1 - line_length * np.sin(angle))
-        all_values.append((min_x0, min_y0, min_x1, min_y1, max_x0, max_y0, max_x1, max_y1, max_value-min_value, min_index, angle_d))
+                if mid_angle_d > angle_d_min:
+                    min_x1, min_y1 = min_index, im_size_y
+                    min_x0, min_y0 = int(min_x1 - line_length * np.cos(angle_min)), int(min_y1 - line_length * np.sin(angle_min))
+                else:
+                    min_x0, min_y0 = min_index, 0
+                    min_x1, min_y1 = int(min_x0 + line_length * np.cos(angle_min)), int(min_y0 + line_length * np.sin(angle_min))
+
+                if mid_angle_d > angle_d_max:
+                    max_x0, max_y0 = max_index, 0
+                    max_x1, max_y1 = int(max_x0 + line_length * np.cos(angle_max)), int(max_y0 + line_length * np.sin(angle_max))
+                else:
+                    max_x1, max_y1 = max_index, im_size_y
+                    max_x0, max_y0 = int(max_x1 - line_length * np.cos(angle_max)), int(max_y1 - line_length * np.sin(angle_max))
+            
+            all_values.append((min_x0, min_y0, min_x1, min_y1, max_x0, max_y0, max_x1, max_y1, max_value-min_value, min_index, angle_d_min, angle_d_max))
     
     if len(all_values) == 0:
         return None
     all_values = np.array(all_values)
     best_index = all_values[:, 8].argmax()
+    print(f"best value angle_d_min: {all_values[best_index, 10]}")
+    print(f"best value angle_d_max: {all_values[best_index, 11]}")
     return int(all_values[best_index, 0]), int(all_values[best_index, 1]), int(all_values[best_index, 2]), int(all_values[best_index, 3]), int(all_values[best_index, 4]), int(all_values[best_index, 5]), int(all_values[best_index, 6]), int(all_values[best_index, 7])
     
 
     
-def get_bounding_lines(image, max_angle_dev, min_line_length_percentage = 40, min_side_size_percentage_x = 45, min_side_size_percentage_y = 70):
+def get_bounding_lines(image, max_angle_dev, max_side_angle_dev, min_line_length_percentage = 40, min_side_size_percentage_x = 70, min_side_size_percentage_y = 45):
     im_size_x = len(image[0])
     im_size_y = len(image)
     min_line_length_x = int(min_line_length_percentage * im_size_x / 100)
@@ -188,8 +210,8 @@ def get_bounding_lines(image, max_angle_dev, min_line_length_percentage = 40, mi
     min_side_size_y = int(min_side_size_percentage_y * im_size_y / 100)
 
     # Get the best horizontal pair
-    best_horizontal_pair = get_best_side_pair(image, True, max_angle_dev, min_side_size_y, min_line_length_x)
+    best_horizontal_pair = get_best_side_pair(image, True, max_angle_dev, max_side_angle_dev, min_side_size_y, min_line_length_x)
     # Get the best vertical pair
-    best_vertical_pair = get_best_side_pair(image, False, max_angle_dev, min_side_size_x, min_line_length_y)
+    best_vertical_pair = get_best_side_pair(image, False, max_angle_dev, max_side_angle_dev, min_side_size_x, min_line_length_y)
 
     return best_horizontal_pair, best_vertical_pair
