@@ -4,7 +4,8 @@ import numpy as np
 import os
 from tqdm.auto import tqdm
 
-from DANI_license_plate_transformer import run_license_plate_transformer
+from license_plate_cropper import LicensePlateCropper
+from side_detector import SideDetector
 from yolo import YOLO
 from convolutional_ocr import ConvolutionalOCR
 
@@ -19,20 +20,25 @@ def load_image(image_path):
         return None
 
 
-convolutional_ocr = ConvolutionalOCR()
+#convolutional_ocr = ConvolutionalOCR()
+side_detector = SideDetector(max_angle_dev=20, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
+license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, saturation_threshold=50, value_threshold=60)  # hue_value might be added for blue filtering
 
 
 def process_image(img_file):
     candidates = yolo.get_license_plate_candidates(img_file)
-    for img in candidates:
+    for img in candidates[:1]:
         opencvImage = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        image_no_cimer, image_binary, concatenated = run_license_plate_transformer(opencvImage)
-        det = convolutional_ocr.detect(image_no_cimer, draw_boxes=True)
+        image_cropped, image_binary, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
+        #det = convolutional_ocr.detect(image_cropped, draw_boxes=True)
 
-        cv2.imshow(det, concatenated)
-        cv2.waitKey(0)
+        cv2.imshow(img_file, concatenated)
+        key = cv2.waitKey(0)
         cv2.destroyAllWindows()
-        # cv2.waitKey(0)
+        if key == ord('q'):
+            assert False
+
+        
 
 
 if __name__ == "__main__":
@@ -49,6 +55,9 @@ if __name__ == "__main__":
             scale_factor = 1.2
             files = os.listdir(image_path)
 
+            #shuffle the files
+            np.random.shuffle(files)
+            
             for fileName in files:
                 process_image(os.path.join(image_path, fileName))
         elif os.path.isfile(image_path):
