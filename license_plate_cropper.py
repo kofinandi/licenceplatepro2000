@@ -212,10 +212,10 @@ class LicensePlateCropper:
         start_top_point = self.__line_intersection((self.start_point,self.start_v), ((0, start_y), (self.prev_image.shape[1], start_y)))
         end_top_point = self.__line_intersection((self.end_point,self.end_v), ((0, start_y), (self.prev_image.shape[1], start_y)))
 
-        start_x = int(min(self.start_point[0], start_top_point[0])) - 10
-        end_x = int(max(self.end_point[0], end_top_point[0])) + 10
+        start_x = max(int(min(self.start_point[0], start_top_point[0])) - 6, 0)
+        end_x = min(int(max(self.end_point[0], end_top_point[0])) + 6, self.prev_image.shape[1] - 1)
 
-        end_y = end_y + 10
+        end_y = min(end_y + 6, self.prev_image.shape[0] - 1)
 
         cropped_image = self.prev_image[start_y:end_y, start_x:end_x]
 
