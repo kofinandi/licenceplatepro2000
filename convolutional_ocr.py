@@ -109,20 +109,21 @@ class ConvolutionalOCR:
         for key, template in self.template_imgs.items():
             for character_ratio in np.linspace(self.character_size[0], self.character_size[1], num=int((self.character_size[1]-self.character_size[0])/self.character_size_step)+1):
                 for angle in range(-self.angle_range, self.angle_range+1, self.angle_step):
-                    for transform in np.linspace(self.transform_range[0], self.transform_range[1], num=int((self.transform_range[1]-self.transform_range[0])/self.transform_step)+1):
-                        template = self._rotate_image(template, angle)
-                        template_height, template_width = template.shape
+                    for transform in np.linspace(self.transform_range[0], self.transform_range[1], num=int(round((self.transform_range[1]-self.transform_range[0])/self.transform_step))+1):
+                        template_copy = template.copy()
+                        template_copy = self._rotate_image(template_copy, angle)
+                        template_height, template_width = template_copy.shape
                         if multi_row:
                             multi_row_multiplier = 0.5
                         else:
                             multi_row_multiplier = 1.0
-                        template = cv2.resize(template, (int(height * character_ratio * template_width / template_height * transform * multi_row_multiplier), int(height * character_ratio * multi_row_multiplier)))
-                        match = cv2.matchTemplate(plate_gray, template, cv2.TM_CCOEFF_NORMED)
+                        template_copy = cv2.resize(template_copy, (int(height * character_ratio * template_width / template_height * transform * multi_row_multiplier), int(height * character_ratio * multi_row_multiplier)))
+                        match = cv2.matchTemplate(plate_gray, template_copy, cv2.TM_CCOEFF_NORMED)
 
                         locations = np.where(match >= self.conv_threshold)
                         # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
                         locations = list(zip(*locations[::-1]))
-                        locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template.shape) + list(key) for elem in locations]
+                        locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template_copy.shape) + list(key) for elem in locations]
                         detections.extend(locations)
 
         # Apply NMS
