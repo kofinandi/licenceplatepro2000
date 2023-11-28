@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 class ConvolutionalOCR:
-    def __init__(self, conv_threshold=0.65, nms_threshold=0.1, padding=0.2, plate_size=(40, 205), character_size=(0.6, 0.9), character_size_step=0.05, angle_range=6, angle_step=3):
+    def __init__(self, conv_threshold=0.65, nms_threshold=0.1, padding=0.2, plate_size=(40, 205), character_size=(0.6, 0.9), character_size_step=0.05, angle_range=6, angle_step=3, transform_range=(1.0, 1.2), transform_step=0.1):
         # create a list of all the template images
         self.template_imgs = {}
         for img_file in os.listdir('font_img_regi'):
@@ -18,6 +18,9 @@ class ConvolutionalOCR:
         self.character_size_step = character_size_step
         self.angle_range = angle_range
         self.angle_step = angle_step
+
+        self.transform_range = transform_range
+        self.transform_step = transform_step
 
     def _apply_nms(self, boxes):
         # Sort boxes by their confidence score in descending order
@@ -96,16 +99,17 @@ class ConvolutionalOCR:
         for key, template in self.template_imgs.items():
             for character_ratio in np.linspace(self.character_size[0], self.character_size[1], num=int((self.character_size[1]-self.character_size[0])/self.character_size_step)+1):
                 for angle in range(-self.angle_range, self.angle_range+1, self.angle_step):
-                    template = self._rotate_image(template, angle)
-                    template_height, template_width = template.shape
-                    template = cv2.resize(template, (int(height * character_ratio * template_width / template_height), int(height * character_ratio)))
-                    match = cv2.matchTemplate(plate_gray, template, cv2.TM_CCOEFF_NORMED)
+                    for transform in np.linspace(self.transform_range[0], self.transform_range[1], num=int((self.transform_range[1]-self.transform_range[0])/self.transform_step)+1):
+                        template = self._rotate_image(template, angle)
+                        template_height, template_width = template.shape
+                        template = cv2.resize(template, (int(height * character_ratio * template_width / template_height * transform), int(height * character_ratio)))
+                        match = cv2.matchTemplate(plate_gray, template, cv2.TM_CCOEFF_NORMED)
 
-                    locations = np.where(match >= self.conv_threshold)
-                    # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
-                    locations = list(zip(*locations[::-1]))
-                    locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template.shape) + list(key) for elem in locations]
-                    detections.extend(locations)
+                        locations = np.where(match >= self.conv_threshold)
+                        # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
+                        locations = list(zip(*locations[::-1]))
+                        locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template.shape) + list(key) for elem in locations]
+                        detections.extend(locations)
 
         # Apply NMS
         picked_boxes = self._apply_nms(detections)
