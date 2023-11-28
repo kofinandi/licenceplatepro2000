@@ -124,12 +124,9 @@ class LicensePlateCropper:
             _, binary_image = cv2.threshold(image, most_frequent_value + 14, 255, cv2.THRESH_BINARY)
 
         return binary_image
-<<<<<<< HEAD
-=======
-    
+
     def line_length(self, p0, p1):
         return ((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)**0.5
->>>>>>> origin/dani
 
     def run_license_plate_transformer(self, image):
         no_colors_image = self.__remove_colors_from_image(image)

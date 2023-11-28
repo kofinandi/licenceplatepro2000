@@ -53,10 +53,10 @@ def process_image(img_file, show_detection=False):
     for img in candidates:
         opencvImage = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
         start_time = time.time()
-        image_cropped, image_binary, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
+        cropped_image, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
         transform_time = time.time() - start_time
         start_time = time.time()
-        det, picked_boxes = convolutional_ocr.detect(image_cropped, draw_boxes=show_detection)
+        det, picked_boxes = convolutional_ocr.detect(cropped_image, draw_boxes=show_detection)
         text = convolutional_ocr.parse(det)
         ocr_time = time.time() - start_time
         if args.export_images:
