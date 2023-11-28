@@ -6,6 +6,7 @@ import argparse
 from contextlib import closing
 from multiprocessing import Pool
 
+import time
 import cv2
 import numpy as np
 import os
@@ -80,6 +81,41 @@ def process(img_path):
     predicted = process_image(img_path, show_detection=show_detection)
     desired = os.path.basename(img_path)
     return predicted, desired
+        start_time = time.time()
+        image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
+        transform_time = time.time() - start_time
+        start_time = time.time()
+        det = convolutional_ocr.detect(image_cropped, draw_boxes=True, ratio=aspect_ratio)
+        print(f"Aspect ratio: {aspect_ratio}")
+        text, valid = convolutional_ocr.parse(det)
+        print(f"Valid: {valid}")
+        ocr_time = time.time() - start_time
+        print(f"Transform time: {transform_time}")
+        print(f"OCR time: {ocr_time}")
+        cv2.imshow(text, concatenated)
+        key = cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        if key == ord('q'):
+            assert False
+
+        if not valid:
+            image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_cropped_license_plate_transformer(height_ratio=0.7)
+            transform_time = time.time() - start_time
+            start_time = time.time()
+            det = convolutional_ocr.detect(image_cropped, draw_boxes=True, ratio=aspect_ratio)
+            print(f"Aspect ratio: {aspect_ratio}")
+            text, valid = convolutional_ocr.parse(det)
+            print(f"Valid: {valid}")
+            ocr_time = time.time() - start_time
+            print(f"Transform time: {transform_time}")
+            print(f"OCR time: {ocr_time}")
+            cv2.imshow(text, concatenated)
+            key = cv2.waitKey(0)
+            cv2.destroyAllWindows()
+            if key == ord('q'):
+                assert False
+
+
 
 
 if __name__ == "__main__":
