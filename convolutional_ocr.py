@@ -122,8 +122,11 @@ class ConvolutionalOCR:
         # Draw bounding boxes around detected positions after NMS
         if draw_boxes:
             plate_with_boxes = self._draw_boxes(plate_gray, picked_boxes)
+            print("Még él1")
             cv2.imshow(text, plate_with_boxes)
+            print("Még él2")
 
+        print("Még él3")
 
         # capitalize the text
         return text
