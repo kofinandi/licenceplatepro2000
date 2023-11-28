@@ -1,4 +1,5 @@
 import sys
+import time
 import cv2
 import numpy as np
 import os
@@ -20,19 +21,25 @@ def load_image(image_path):
         return None
 
 
-#convolutional_ocr = ConvolutionalOCR()
+convolutional_ocr = ConvolutionalOCR(conv_threshold=0.6, padding=0.1, nms_threshold=0.1, character_size=(0.7, 1.0), character_size_step=0.05, angle_range=0, angle_step=1)
 side_detector = SideDetector(max_angle_dev=20, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
-license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, saturation_threshold=50, value_threshold=60)  # hue_value might be added for blue filtering
+license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, hue_range=(110, 160), saturation_threshold=80, value_threshold=60)  # hue_value might be added for blue filtering
 
 
 def process_image(img_file):
     candidates = yolo.get_license_plate_candidates(img_file)
-    for img in candidates[:1]:
+    for img in candidates:
         opencvImage = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+        start_time = time.time()
         image_cropped, image_binary, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
-        #det = convolutional_ocr.detect(image_cropped, draw_boxes=True)
-
-        cv2.imshow(img_file, concatenated)
+        transform_time = time.time() - start_time
+        start_time = time.time()
+        det = convolutional_ocr.detect(image_cropped, draw_boxes=True)
+        text = convolutional_ocr.parse(det)
+        ocr_time = time.time() - start_time
+        print(f"Transform time: {transform_time}")
+        print(f"OCR time: {ocr_time}")
+        cv2.imshow(text, concatenated)
         key = cv2.waitKey(0)
         cv2.destroyAllWindows()
         if key == ord('q'):
