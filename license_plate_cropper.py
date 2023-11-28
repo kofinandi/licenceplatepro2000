@@ -43,7 +43,7 @@ class LicensePlateCropper:
         aspect_ratio = (max_x - min_x) / (max_y - min_y)
 
         # Define the target rectangle based on the aspect ratio
-        target_height = 300  # Adjust this value based on your preference
+        target_height = 80  # Adjust this value based on your preference
         target_width = int(target_height * aspect_ratio)
 
         target_rect = np.array([[0, 0], [target_width, 0], [target_width, target_height], [0, target_height]],
