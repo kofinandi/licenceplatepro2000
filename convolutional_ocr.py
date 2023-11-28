@@ -113,7 +113,8 @@ class ConvolutionalOCR:
         # print the detected text
         text = ''
         for box in picked_boxes:
-            text += box[5]
+            if box[5] != '_':
+                text += box[5]
 
         text = text.upper()
 
