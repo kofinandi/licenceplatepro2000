@@ -7,11 +7,12 @@ import pytesseract
 
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'  # Adjust the path as per your Tesseract installation
 class LicensePlateCropper:
-    def __init__(self, side_detector, text_precentage=0.1, saturation_threshold=100, value_threshold=150):
+    def __init__(self, side_detector, text_precentage=0.1, hue_range=(110, 160), saturation_threshold=100, value_threshold=150):
         self.side_detector = side_detector
         self.text_precentage = text_precentage
         self.saturation_threshold = saturation_threshold
         self.value_threshold = value_threshold
+        self.hue_range = hue_range
 
     def __line_intersection(self, line1, line2):
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
@@ -60,12 +61,14 @@ class LicensePlateCropper:
         # Convert the image to HSV
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-        # Create masks for pixels above the threshold in S and V channels
+        # Create masks for pixels above the threshold in H, S and V channels
+        h_mask = np.logical_or(hsv[:,:,0] < self.hue_range[0], hsv[:,:,0] > self.hue_range[1])
         s_mask = hsv[:,:,1] > self.saturation_threshold
         v_mask = hsv[:,:,2] > self.value_threshold
 
         # Combine the masks
         combined_mask = np.logical_and(s_mask, v_mask)
+        combined_mask = np.logical_and(combined_mask, h_mask)
 
         # Set the corresponding pixels to black in the original image
         image = image.copy()
