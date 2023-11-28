@@ -13,6 +13,10 @@ class LicensePlateCropper:
         self.saturation_threshold = saturation_threshold
         self.value_threshold = value_threshold
         self.hue_range = hue_range
+        self.start_point = None
+        self.end_point = None
+        self.start_v = None
+        self.end_v = None
 
     def __line_intersection(self, line1, line2):
         xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
@@ -129,6 +133,7 @@ class LicensePlateCropper:
         return ((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)**0.5
 
     def run_license_plate_transformer(self, image):
+        self.prev_image = image.copy()
         no_colors_image = self.__remove_colors_from_image(image)
 
         h, v = self.side_detector.get_bounding_lines(cv2.cvtColor(no_colors_image, cv2.COLOR_BGR2GRAY))   # 25, 3, 70, 40, 15
@@ -144,11 +149,22 @@ class LicensePlateCropper:
         cv2.line(image1, (v[0], v[1]), (v[2], v[3]), (0, 255, 0), 2)
         cv2.line(image1, (v[4], v[5]), (v[6], v[7]), (0, 255, 0), 2)
 
+        # print(image.shape)
+
+        # print(f"end_y: {self.end_y}")
+        # print(f"start_x: {self.start_x}")
+        # print(f"end_x: {self.end_x}")
+
         # Get the intersection points
         p1 = self.__line_intersection(((h[0], h[1]), (h[2], h[3])), ((v[0], v[1]), (v[2], v[3])))
         p2 = self.__line_intersection(((h[0], h[1]), (h[2], h[3])), ((v[4], v[5]), (v[6], v[7])))
         p3 = self.__line_intersection(((h[4], h[5]), (h[6], h[7])), ((v[4], v[5]), (v[6], v[7])))
         p4 = self.__line_intersection(((h[4], h[5]), (h[6], h[7])), ((v[0], v[1]), (v[2], v[3])))
+
+        self.start_point = p4
+        self.end_point = p3
+        self.start_v = p1
+        self.end_v = p2
 
         image2 = no_colors_image.copy()
         # Show the points on the image
@@ -185,3 +201,24 @@ class LicensePlateCropper:
         aspect_ratio = self.line_length(p1, p2) / self.line_length(p2, p3)
 
         return cropped_image, image_binary, aspect_ratio, concatenated
+    
+    def run_cropped_license_plate_transformer(self, height_ratio=0.4):
+        if self.start_point is None or self.end_point is None or self.start_v is None or self.end_v is None:
+            return None, None, None, None
+
+        end_y = int(max(self.start_point[1], self.end_point[1]))
+        start_y = int(max(end_y - int(self.prev_image.shape[0] * height_ratio), 0))
+
+        start_top_point = self.__line_intersection((self.start_point,self.start_v), ((0, start_y), (self.prev_image.shape[1], start_y)))
+        end_top_point = self.__line_intersection((self.end_point,self.end_v), ((0, start_y), (self.prev_image.shape[1], start_y)))
+
+        start_x = int(min(self.start_point[0], start_top_point[0])) - 10
+        end_x = int(max(self.end_point[0], end_top_point[0])) + 10
+
+        end_y = end_y + 10
+
+        cropped_image = self.prev_image[start_y:end_y, start_x:end_x]
+
+        return self.run_license_plate_transformer(cropped_image)
+
+
