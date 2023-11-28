@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 class ConvolutionalOCR:
-    def __init__(self, conv_threshold=0.65, nms_threshold=0.1, padding=0.2, plate_size=(40, 205), character_size=(0.6, 0.9), character_size_step=0.05, angle_range=6, angle_step=3):
+    def __init__(self, conv_threshold=0.65, nms_threshold=0.1, padding=0.2, plate_size=(40, 205), character_size=(0.6, 0.9), character_size_step=0.05, angle_range=6, angle_step=3, transform_range=(1.0, 1.2), transform_step=0.1, row_separator=0.4, ratio_threshold=2):
         # create a list of all the template images
         self.template_imgs = {}
         for img_file in os.listdir('font_img_regi'):
@@ -18,6 +18,11 @@ class ConvolutionalOCR:
         self.character_size_step = character_size_step
         self.angle_range = angle_range
         self.angle_step = angle_step
+
+        self.transform_range = transform_range
+        self.transform_step = transform_step
+        self.row_separator = row_separator
+        self.ratio_threshold = ratio_threshold
 
     def _apply_nms(self, boxes):
         # Sort boxes by their confidence score in descending order
@@ -78,13 +83,21 @@ class ConvolutionalOCR:
         rotated_image = rotated_image[50:-50, 50:-50]
         return rotated_image
     
-    def detect(self, plate_img, draw_boxes=False):
+    def detect(self, plate_img, draw_boxes=False, ratio=5.125):
         # Convert images to grayscale
         plate_gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
 
         # resize the image
         scale = 2
-        plate_gray = cv2.resize(plate_gray, (scale * self.plate_size[1], scale * self.plate_size[0]))
+
+        if ratio < self.ratio_threshold:
+            plate_size = (85, 119)
+            multi_row = True
+        else:
+            plate_size = self.plate_size
+            multi_row = False
+
+        plate_gray = cv2.resize(plate_gray, (scale * plate_size[1], scale * plate_size[0]))
         height, _ = plate_gray.shape
 
         p = int(height * self.padding)
@@ -96,16 +109,21 @@ class ConvolutionalOCR:
         for key, template in self.template_imgs.items():
             for character_ratio in np.linspace(self.character_size[0], self.character_size[1], num=int((self.character_size[1]-self.character_size[0])/self.character_size_step)+1):
                 for angle in range(-self.angle_range, self.angle_range+1, self.angle_step):
-                    template = self._rotate_image(template, angle)
-                    template_height, template_width = template.shape
-                    template = cv2.resize(template, (int(height * character_ratio * template_width / template_height), int(height * character_ratio)))
-                    match = cv2.matchTemplate(plate_gray, template, cv2.TM_CCOEFF_NORMED)
+                    for transform in np.linspace(self.transform_range[0], self.transform_range[1], num=int((self.transform_range[1]-self.transform_range[0])/self.transform_step)+1):
+                        template = self._rotate_image(template, angle)
+                        template_height, template_width = template.shape
+                        if multi_row:
+                            multi_row_multiplier = 0.5
+                        else:
+                            multi_row_multiplier = 1.0
+                        template = cv2.resize(template, (int(height * character_ratio * template_width / template_height * transform * multi_row_multiplier), int(height * character_ratio * multi_row_multiplier)))
+                        match = cv2.matchTemplate(plate_gray, template, cv2.TM_CCOEFF_NORMED)
 
-                    locations = np.where(match >= self.conv_threshold)
-                    # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
-                    locations = list(zip(*locations[::-1]))
-                    locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template.shape) + list(key) for elem in locations]
-                    detections.extend(locations)
+                        locations = np.where(match >= self.conv_threshold)
+                        # locations is a tuple of arrays, so we need to convert it to a n x 3 array format adding the third dimension as the value of the match
+                        locations = list(zip(*locations[::-1]))
+                        locations = [list([match[elem[1], elem[0]]]) + list(elem) + list(template.shape) + list(key) for elem in locations]
+                        detections.extend(locations)
 
         # Apply NMS
         picked_boxes = self._apply_nms(detections)
@@ -113,9 +131,25 @@ class ConvolutionalOCR:
         picked_boxes.sort(key=lambda x: x[1])
         # print the detected text
         text = ''
-        for box in picked_boxes:
-            if box[5] != '_':
-                text += box[5]
+        if multi_row:
+            top_boxes = [box for box in picked_boxes if box[2] < self.row_separator * height]
+            bottom_boxes = [box for box in picked_boxes if box[2] >= self.row_separator * height]
+
+            top_boxes.sort(key=lambda x: x[1])
+            bottom_boxes.sort(key=lambda x: x[1])
+
+            for box in top_boxes:
+                if box[5] != '_':
+                    text += box[5]
+
+            for box in bottom_boxes:
+                if box[5] != '_':
+                    text += box[5]
+
+        else:
+            for box in picked_boxes:
+                if box[5] != '_':
+                    text += box[5]
 
         text = text.upper()
 
@@ -128,6 +162,7 @@ class ConvolutionalOCR:
         return text
     
     def parse(self, text):
+        valid = False
         if len(text) == 7:
             text = text[:4] + text[4:].replace('O', '0')
             text = text[:4] + text[4:].replace('D', '0')
@@ -151,6 +186,7 @@ class ConvolutionalOCR:
 
             # format the text from AAAA111 to AA AA-111
             text = text[:2] + ' ' + text[2:4] + '-' + text[4:]
+            valid = True
 
         if len(text) == 6:
             text = text[:3] + text[3:].replace('O', '0')
@@ -175,5 +211,6 @@ class ConvolutionalOCR:
 
             # format the text from AAA111 to AAA-111
             text = text[:3] + '-' + text[3:]
+            valid = True
 
-        return text
+        return text, valid
