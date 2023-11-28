@@ -21,9 +21,9 @@ def load_image(image_path):
         return None
 
 
-convolutional_ocr = ConvolutionalOCR(conv_threshold=0.6, padding=0.15, nms_threshold=0.1, character_size=(0.7, 1.0), character_size_step=0.05, angle_range=0, angle_step=1)
-side_detector = SideDetector(max_angle_dev=20, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
-license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, hue_range=(110, 140), saturation_threshold=80, value_threshold=60)  # hue_value might be added for blue filtering
+convolutional_ocr = ConvolutionalOCR(conv_threshold=0.6, padding=0.15, nms_threshold=0.1, character_size=(0.8, 1.0), character_size_step=0.05, angle_range=0, angle_step=1)
+side_detector = SideDetector(max_angle_dev=25, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
+license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, hue_range=(94, 140), saturation_threshold=80, value_threshold=60)  # hue_value might be added for blue filtering
 
 
 def process_image(img_file):
@@ -34,14 +34,6 @@ def process_image(img_file):
         image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
         transform_time = time.time() - start_time
         start_time = time.time()
-
-        print(f"width: {image_cropped.shape[1]}, height: {image_cropped.shape[0]}")
-        cv2.imshow(img_file, concatenated)
-        key = cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        if key == ord('q'):
-            assert False
-
         det = convolutional_ocr.detect(image_cropped, draw_boxes=True)
         text = convolutional_ocr.parse(det)
         ocr_time = time.time() - start_time
