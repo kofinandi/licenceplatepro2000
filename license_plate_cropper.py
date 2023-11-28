@@ -124,6 +124,9 @@ class LicensePlateCropper:
             _, binary_image = cv2.threshold(image, most_frequent_value + 14, 255, cv2.THRESH_BINARY)
 
         return binary_image
+    
+    def line_length(self, p0, p1):
+        return ((p0[0] - p1[0])**2 + (p0[1] - p1[1])**2)**0.5
 
     def run_license_plate_transformer(self, image):
         no_colors_image = self.__remove_colors_from_image(image)
@@ -179,4 +182,6 @@ class LicensePlateCropper:
         # Show all three images in one line as the output of the cell
         concatenated = np.concatenate((image1, image2, cropped_image_v, image_binary_v), axis=0)
 
-        return cropped_image, image_binary, concatenated
+        aspect_ratio = self.line_length(p1, p2) / self.line_length(p2, p3)
+
+        return cropped_image, image_binary, aspect_ratio, concatenated
