@@ -1,5 +1,6 @@
 import sys
 import time
+import time
 
 import argparse
 from contextlib import closing
@@ -34,9 +35,10 @@ print(args)
 os.makedirs(args.img_filter_res, exist_ok=True)
 os.makedirs(args.plate_conv_res, exist_ok=True)
 
-convolutional_ocr = ConvolutionalOCR(conv_threshold=0.6, padding=0.15, nms_threshold=0.1, character_size=(0.7, 1.0), character_size_step=0.05, angle_range=0, angle_step=1)
-side_detector = SideDetector(max_angle_dev=20, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
-license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, hue_range=(110, 140), saturation_threshold=80, value_threshold=60)  # hue_value might be added for blue filtering
+convolutional_ocr = ConvolutionalOCR(conv_threshold=0.6, padding=0.15, nms_threshold=0.1, character_size=(0.8, 1.0), character_size_step=0.05, angle_range=0, angle_step=1)
+side_detector = SideDetector(max_angle_dev=25, max_side_angle_dev=3, min_line_length_percentage=80, min_side_size_percentage_x=25, min_side_size_percentage_y=5, side_sample_num=2)
+license_plate_cropper = LicensePlateCropper(side_detector, text_precentage=0.12, hue_range=(94, 140), saturation_threshold=80, value_threshold=60)  # hue_value might be added for blue filtering
+
 save_interval = 50
 processes = int(args.process_count)
 scale_factor = 1.2 # On the big image, we detect the licenseplate's location, This is that bounding_boxes scale factor

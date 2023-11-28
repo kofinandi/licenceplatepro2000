@@ -62,7 +62,7 @@ class LicensePlateCropper:
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
         # Create masks for pixels above the threshold in H, S and V channels
-        h_mask = np.logical_or(hsv[:,:,0] < self.hue_range[0], hsv[:,:,0] > self.hue_range[1])
+        h_mask = np.logical_and(hsv[:,:,0] > self.hue_range[0], hsv[:,:,0] < self.hue_range[1])
         s_mask = hsv[:,:,1] > self.saturation_threshold
         v_mask = hsv[:,:,2] > self.value_threshold
 
