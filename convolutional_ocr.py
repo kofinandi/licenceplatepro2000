@@ -83,8 +83,10 @@ class ConvolutionalOCR:
         plate_gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
 
         # resize the image
-        height, width = plate_gray.shape
-        plate_gray = cv2.resize(plate_gray, (int(height / self.plate_size[0] * self.plate_size[1]), height))
+        height, _ = plate_gray.shape
+        scale = 2
+        height = height * scale
+        plate_gray = cv2.resize(plate_gray, (scale * self.plate_size[1], scale * self.plate_size[0]))
 
         p = int(height * self.padding)
 
