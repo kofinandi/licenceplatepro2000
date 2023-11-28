@@ -83,8 +83,10 @@ class ConvolutionalOCR:
         plate_gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
 
         # resize the image
-        height, width = plate_gray.shape
-        plate_gray = cv2.resize(plate_gray, (int(height / self.plate_size[0] * self.plate_size[1]), height))
+        height, _ = plate_gray.shape
+        scale = 2
+        height = height * scale
+        plate_gray = cv2.resize(plate_gray, (scale * self.plate_size[1], scale * self.plate_size[0]))
 
         p = int(height * self.padding)
 
@@ -113,15 +115,17 @@ class ConvolutionalOCR:
         # print the detected text
         text = ''
         for box in picked_boxes:
-            text += box[5]
+            if box[5] != '_':
+                text += box[5]
 
         text = text.upper()
 
         # Draw bounding boxes around detected positions after NMS
         if draw_boxes:
             plate_with_boxes = self._draw_boxes(plate_gray, picked_boxes)
+            print("Még él1")
             cv2.imshow(text, plate_with_boxes)
-
+            print("Még él2")
 
         # capitalize the text
         return text
