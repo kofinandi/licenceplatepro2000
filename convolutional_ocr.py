@@ -154,13 +154,16 @@ class ConvolutionalOCR:
 
         text = text.upper()
 
+        plate_with_boxes = self._draw_boxes(plate_gray, picked_boxes)
         # Draw bounding boxes around detected positions after NMS
         if draw_boxes:
-            plate_with_boxes = self._draw_boxes(plate_gray, picked_boxes)
-            cv2.imshow(text + "    a faszomat már", plate_with_boxes)
+            cv2.imshow(text, plate_with_boxes)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
 
         # capitalize the text
-        return text
+        return text, plate_with_boxes
     
     def parse(self, text):
         valid = False

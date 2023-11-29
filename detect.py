@@ -1,5 +1,3 @@
-import sys
-import time
 import time
 
 import argparse
@@ -25,9 +23,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('filename')  # positional argument
 parser.add_argument('-s', '--show_detection', action=argparse.BooleanOptionalAction)
 parser.add_argument('--export_images', action=argparse.BooleanOptionalAction)
-parser.add_argument('--save_file', default='./data/detections.npy')
-parser.add_argument('--img_filter_res', default='./data/img_filter_res')
-parser.add_argument('--plate_conv_res', default='./data/plate_conv_res')
+parser.add_argument('--save_file', default='./data/detections_4.npy')
+parser.add_argument('--img_filter_res', default='./data/img_filter_res_4')
+parser.add_argument('--plate_conv_res', default='./data/plate_conv_res_4')
 parser.add_argument('--process_count', default='8')
 args = parser.parse_args()
 
@@ -60,7 +58,11 @@ def process_image(img_file, show_detection=False):
         transform_time = time.time() - start_time
         start_time = time.time()
         det, picked_boxes = convolutional_ocr.detect(cropped_image, draw_boxes=show_detection)
-        text = convolutional_ocr.parse(det)
+        text, valid = convolutional_ocr.parse(det)
+        if not valid:
+            image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_cropped_license_plate_transformer(height_ratio=0.7)
+            det, picked_boxes = convolutional_ocr.detect(image_cropped, draw_boxes=show_detection, ratio=aspect_ratio)
+            text, valid = convolutional_ocr.parse(det)
         ocr_time = time.time() - start_time
         if args.export_images:
             cv2.imwrite(os.path.join(args.img_filter_res, os.path.basename(img_file)), concatenated)
@@ -78,44 +80,10 @@ def process_image(img_file, show_detection=False):
 
 
 def process(img_path):
-    predicted = process_image(img_path, show_detection=show_detection)
     desired = os.path.basename(img_path)
+    predicted = process_image(img_path, show_detection=show_detection)
+
     return predicted, desired
-        start_time = time.time()
-        image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_license_plate_transformer(opencvImage)
-        transform_time = time.time() - start_time
-        start_time = time.time()
-        det = convolutional_ocr.detect(image_cropped, draw_boxes=True, ratio=aspect_ratio)
-        print(f"Aspect ratio: {aspect_ratio}")
-        text, valid = convolutional_ocr.parse(det)
-        print(f"Valid: {valid}")
-        ocr_time = time.time() - start_time
-        print(f"Transform time: {transform_time}")
-        print(f"OCR time: {ocr_time}")
-        cv2.imshow(text, concatenated)
-        key = cv2.waitKey(0)
-        cv2.destroyAllWindows()
-        if key == ord('q'):
-            assert False
-
-        if not valid:
-            image_cropped, image_binary, aspect_ratio, concatenated = license_plate_cropper.run_cropped_license_plate_transformer(height_ratio=0.7)
-            transform_time = time.time() - start_time
-            start_time = time.time()
-            det = convolutional_ocr.detect(image_cropped, draw_boxes=True, ratio=aspect_ratio)
-            print(f"Aspect ratio: {aspect_ratio}")
-            text, valid = convolutional_ocr.parse(det)
-            print(f"Valid: {valid}")
-            ocr_time = time.time() - start_time
-            print(f"Transform time: {transform_time}")
-            print(f"OCR time: {ocr_time}")
-            cv2.imshow(text, concatenated)
-            key = cv2.waitKey(0)
-            cv2.destroyAllWindows()
-            if key == ord('q'):
-                assert False
-
-
 
 
 if __name__ == "__main__":
